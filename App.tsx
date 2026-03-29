@@ -443,33 +443,62 @@ const fetchPendingMembers = async () => {
   }
 
   // Member Approval Actions
-  const handleApproveUser = (targetId: string) => {
-    const users = getAllUsers();
-    const updated = users.map(u => u.id === targetId ? { 
-      ...u, 
-      status: 'APPROVED' as UserStatus,
-      processedAt: Date.now(),
-      processedBy: user?.id
-    } : u);
-    updateUsersRegistry(updated);
-    addAdminLog('Member Approval', `Approved membership for user: ${targetId}`);
-  };
+ const handleApproveUser = async (targetId: string) => {
+  try {
+    const response = await fetch("/.netlify/functions/approveMember", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: targetId,
+        processedBy: user?.id,
+      }),
+    });
 
-  const handleRejectUser = () => {
-    if (!rejectingUser) return;
-    const users = getAllUsers();
-    const updated = users.map(u => u.id === rejectingUser.id ? { 
-      ...u, 
-      status: 'REJECTED' as UserStatus,
-      rejectionReason: rejectionNote,
-      processedAt: Date.now(),
-      processedBy: user?.id
-    } : u);
-    updateUsersRegistry(updated);
-    addAdminLog('Member Approval', `Rejected membership for user: ${rejectingUser.id}. Reason: ${rejectionNote}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("회원 승인 실패:", data);
+      return;
+    }
+
+    await fetchPendingMembers();
+  } catch (error) {
+    console.error("회원 승인 네트워크 오류:", error);
+  }
+};
+
+ const handleRejectUser = async () => {
+  if (!rejectingUser) return;
+
+  try {
+    const response = await fetch("/.netlify/functions/rejectMember", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: rejectingUser.user_id,
+        rejectionReason: rejectionNote,
+        processedBy: user?.id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("회원 반려 실패:", data);
+      return;
+    }
+
     setRejectingUser(null);
     setRejectionNote('');
-  };
+    await fetchPendingMembers();
+  } catch (error) {
+    console.error("회원 반려 네트워크 오류:", error);
+  }
+};
 
   const handleToggleSuspension = (targetId: string) => {
     const users = getAllUsers();
@@ -1020,7 +1049,7 @@ const fetchPendingMembers = async () => {
                               </td>
                               <td className="px-10 py-8 text-right">
                                 <div className="flex gap-2 justify-end">
-                                  <button onClick={() => handleApproveUser(pendingUser.id)} className="p-4 bg-green-600/20 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white transition-all shadow-lg active:scale-95" title="승인">
+                                  <button onClick={() => handleApproveUser(pendingUser.user_id)} className="p-4 bg-green-600/20 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white transition-all shadow-lg active:scale-95" title="승인">
                                     <Check size={20}/>
                                   </button>
                                   <button onClick={() => setRejectingUser(pendingUser)} className="p-4 bg-red-600/20 text-red-500 rounded-2xl hover:bg-red-600 hover:text-white transition-all active:scale-95" title="반려">
