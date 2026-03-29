@@ -178,6 +178,7 @@ export default function App() {
   const [allMembers, setAllMembers] = useState<any[]>([]);
   const [myCoinRequests, setMyCoinRequests] = useState<any[]>([]);
   const [allCoinRequests, setAllCoinRequests] = useState<any[]>([]);
+  const [adminAccounts, setAdminAccounts] = useState<any[]>([]);
   
   // Auth States
   const [loginForm, setLoginForm] = useState({ id: '', password: '' });
@@ -309,6 +310,11 @@ useEffect(() => {
   }
 }, [view, user]);
 useEffect(() => {
+  if (view === ViewType.ADMIN_ACCOUNTS && user?.role === 'super_admin') {
+    fetchAdminAccounts();
+  }
+}, [view, user]);
+useEffect(() => {
   if (view === ViewType.HISTORY && user?.role === 'user') {
     fetchMyCoinRequests();
   }
@@ -424,6 +430,7 @@ const fetchAllCoinRequests = async () => {
     console.error("전체 구매내역 네트워크 오류:", error);
   }
 };
+
   // Admin Logging Helper
   const addAdminLog = (action: string, details: string, prev?: any, curr?: any) => {
     if (!user) return;
@@ -552,7 +559,21 @@ const fetchPendingMembers = async () => {
     console.error("승인대기 회원 불러오기 네트워크 오류:", error);
   }
 };
+const fetchAdminAccounts = async () => {
+  try {
+    const response = await fetch("/.netlify/functions/getAdminAccounts");
+    const data = await response.json();
 
+    if (!response.ok) {
+      console.error("관리자 목록 조회 실패:", data);
+      return;
+    }
+
+    setAdminAccounts(data);
+  } catch (error) {
+    console.error("관리자 목록 네트워크 오류:", error);
+  }
+};
   const handleForcePwChange = () => {
     if (!pwChangeData.new || pwChangeData.new !== pwChangeData.confirm) {
       setAuthError('새 비밀번호가 일치하지 않습니다.');
@@ -906,27 +927,46 @@ const handleTogglePackageActive = async (pkg: CoinPackage) => {
     addAdminLog('Account Management', `Changed role of ${id} to ${newRole}`, oldUser?.role, newRole);
   };
 
-  const handleCreateAdmin = () => {
-    if (user?.role !== 'super_admin') return;
-    const users = getAllUsers();
-    if (users.some(u => u.id === newAdminData.id)) {
-      setAuthError('이미 사용 중인 아이디입니다.');
+  const handleCreateAdmin = async () => {
+  if (user?.role !== 'super_admin') return;
+
+  try {
+    const response = await fetch("/.netlify/functions/createAdminAccount", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: newAdminData.id,
+        name: newAdminData.name,
+        email: newAdminData.email,
+        password: newAdminData.password,
+        role: newAdminData.role,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setAuthError(data.error || "신규 관리자 생성 실패");
       return;
     }
-    const newAdmin: User = { 
-      ...newAdminData, 
-      balance: 0, 
-      totalPaidCoins: 0, 
-      totalUsedCoins: 0, 
-      isActive: true, 
-      status: 'APPROVED', 
-      isPasswordChanged: false 
-    };
-    updateUsersRegistry([...users, newAdmin]);
-    addAdminLog('Account Management', `Created new ${newAdmin.role}: ${newAdmin.id}`);
+
+    await fetchAdminAccounts();
+
     setShowCreateAdmin(false);
-    setNewAdminData({ id: '', name: '', email: '', password: '', role: 'admin' });
-  };
+    setNewAdminData({
+      id: '',
+      name: '',
+      email: '',
+      password: '',
+      role: 'admin'
+    });
+    setAuthError(null);
+  } catch (error) {
+    setAuthError("네트워크 오류가 발생했습니다.");
+  }
+};
 
   const handleSaveBankInfo = async () => {
   if (user?.role !== 'super_admin') return;
@@ -1280,23 +1320,46 @@ const handleTogglePackageActive = async (pkg: CoinPackage) => {
                   <tr><th className="px-10 py-6">관리자</th><th className="px-10 py-6">권한</th><th className="px-10 py-6">상태</th><th className="px-10 py-6 text-right">제어</th></tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {getAllUsers().filter(u => u.role !== 'user').map(admin => (
-                    <tr key={admin.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="px-10 py-8"><p className="font-black text-slate-200">{admin.name}</p><p className="text-xs text-slate-500 font-mono">ID: {admin.id}</p></td>
-                      <td className="px-10 py-8">
-                        <select disabled={admin.id === 'superadmin'} value={admin.role} onChange={(e) => handleUpdateRole(admin.id, e.target.value as UserRole)} className="bg-slate-900 border border-white/5 text-[10px] font-black uppercase px-4 py-2 rounded-xl">
-                           <option value="admin">Admin</option><option value="super_admin">Super Admin</option>
-                        </select>
-                      </td>
-                      <td className="px-10 py-8">
-                        <StatusBadge status={admin.status} />
-                      </td>
-                      <td className="px-10 py-8 text-right">
-                        {admin.id !== 'superadmin' && <button onClick={() => handleToggleSuspension(admin.id)} className={`p-3 rounded-xl transition-all ${admin.status === 'SUSPENDED' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>{admin.status === 'SUSPENDED' ? <UserCheck size={18}/> : <UserX size={18}/>}</button>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+  {adminAccounts.map((admin: any) => (
+    <tr key={admin.user_id} className="hover:bg-white/[0.02] transition-colors group">
+      <td className="px-10 py-8">
+        <p className="font-black text-slate-200">{admin.name}</p>
+        <p className="text-xs text-slate-500 font-mono">ID: {admin.user_id}</p>
+      </td>
+
+      <td className="px-10 py-8">
+        <select
+          disabled={admin.user_id === 'superadmin'}
+          value={admin.role}
+          onChange={(e) => handleUpdateRole(admin.user_id, e.target.value as UserRole)}
+          className="bg-slate-900 border border-white/5 text-[10px] font-black uppercase px-4 py-2 rounded-xl"
+        >
+          <option value="admin">Admin</option>
+          <option value="super_admin">Super Admin</option>
+        </select>
+      </td>
+
+      <td className="px-10 py-8">
+        <StatusBadge status={admin.status} />
+      </td>
+
+      <td className="px-10 py-8 text-right">
+        {admin.user_id !== 'superadmin' && (
+          <button
+            onClick={() => handleToggleSuspension(admin.user_id)}
+            className={`p-3 rounded-xl transition-all ${
+              admin.status === 'SUSPENDED'
+                ? 'bg-green-500/10 text-green-500'
+                : 'bg-red-500/10 text-red-500'
+            }`}
+          >
+            {admin.status === 'SUSPENDED' ? <UserCheck size={18} /> : <UserX size={18} />}
+          </button>
+        )}
+      </td>
+    </tr>
+  ))}
+</tbody>
               </table>
             </div>
           </div>
