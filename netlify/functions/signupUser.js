@@ -1,4 +1,5 @@
 const { Pool } = require("pg");
+const bcrypt = require("bcryptjs");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -54,6 +55,7 @@ exports.handler = async (event) => {
       };
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
     const now = Date.now();
 
     const result = await pool.query(
@@ -68,7 +70,7 @@ exports.handler = async (event) => {
         'user', 'PENDING', true, true, $8
       )
       RETURNING id, user_id, name, email, status`,
-      [id, password, name, email, phone, bankName, accountNumber, now]
+      [id, hashedPassword, name, email, phone, bankName, accountNumber, now]
     );
 
     return {

@@ -1,4 +1,5 @@
 const { Pool } = require("pg");
+const bcrypt = require("bcryptjs");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -63,7 +64,8 @@ exports.handler = async (event) => {
 
     const member = result.rows[0];
 
-    if (member.password !== password) {
+    const isPasswordMatch = await bcrypt.compare(password, member.password);
+    if (!isPasswordMatch) {
       return {
         statusCode: 401,
         body: JSON.stringify({ error: "비밀번호가 일치하지 않습니다." }),
@@ -106,7 +108,6 @@ exports.handler = async (event) => {
 
     const user = {
       id: member.user_id,
-      password: member.password,
       name: member.name,
       email: member.email,
       phone: member.phone,
