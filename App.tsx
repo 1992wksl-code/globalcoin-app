@@ -173,7 +173,8 @@ export default function App() {
   const [rejectionNote, setRejectionNote] = useState('');
   const [adminSelectedUser, setAdminSelectedUser] = useState<User | null>(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [pendingMembers, setPendingMembers] = useState<any[]>([]);
+  const [pendingMembers, setPendingMembers] = useState<any[]>([]); 
+  const [allMembers, setAllMembers] = useState<any[]>([]);
 
   // Auth States
   const [loginForm, setLoginForm] = useState({ id: '', password: '' });
@@ -282,8 +283,24 @@ export default function App() {
 useEffect(() => {
   if (view === ViewType.ADMIN && user?.role !== 'user') {
     fetchPendingMembers();
+    fetchAllMembers(); 
   }
 }, [view, user]);
+const fetchAllMembers = async () => {
+  try {
+    const response = await fetch("/.netlify/functions/getAllMembers");
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("전체 회원 불러오기 실패:", data);
+      return;
+    }
+
+    setAllMembers(data);
+  } catch (error) {
+    console.error("전체 회원 불러오기 네트워크 오류:", error);
+  }
+};
   // Admin Logging Helper
   const addAdminLog = (action: string, details: string, prev?: any, curr?: any) => {
     if (!user) return;
@@ -656,12 +673,13 @@ const fetchPendingMembers = async () => {
   }), [transactions, getAllUsers()]);
 
   const filteredMembers = useMemo(() => {
-    const query = userSearchQuery.toLowerCase();
-    return getAllUsers().filter(u => 
-      u.role === 'user' && 
-      (u.id.toLowerCase().includes(query) || u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query))
-    );
-  }, [userSearchQuery, getAllUsers()]);
+  const query = userSearchQuery.toLowerCase();
+  return allMembers.filter((u: any) =>
+    (u.user_id?.toLowerCase().includes(query) ||
+      u.name?.toLowerCase().includes(query) ||
+      u.email?.toLowerCase().includes(query))
+  );
+}, [userSearchQuery, allMembers]);
 
   // Packages sorted by sortOrder or id
   const sortedPackages = useMemo(() => {
@@ -1108,11 +1126,11 @@ const fetchPendingMembers = async () => {
                         </thead>
                         <tbody className="divide-y divide-white/5">
                           {filteredMembers.map(member => (
-                            <tr key={member.id} className="hover:bg-white/[0.02] transition-colors">
+                            <tr key={member.user_id} className="hover:bg-white/[0.02] transition-colors">
                               <td className="px-10 py-8">
                                 <div className="flex flex-col">
                                   <span className="font-black text-slate-200">{member.name}</span>
-                                  <span className="text-[10px] text-slate-500 font-mono">@{member.id}</span>
+                                  <span className="text-[10px] text-slate-500 font-mono">@{member.user_id}</span>
                                 </div>
                               </td>
                               <td className="px-10 py-8">
