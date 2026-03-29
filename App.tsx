@@ -199,7 +199,6 @@ export default function App() {
   // Initialize Data from Storage
   useEffect(() => {
   const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-  const storedPackages = localStorage.getItem(PACKAGES_STORAGE_KEY);
   const storedTransactions = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
   const storedLogs = localStorage.getItem(ADMIN_LOGS_STORAGE_KEY);
 
@@ -218,12 +217,7 @@ export default function App() {
     }
   }
 
-  if (storedPackages) {
-    setPackages(JSON.parse(storedPackages));
-  } else {
-    setPackages(INITIAL_PACKAGES);
-    localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(INITIAL_PACKAGES));
-  }
+  fetchPackages();
 
   if (storedTransactions) {
     setTransactions(JSON.parse(storedTransactions));
@@ -347,6 +341,32 @@ const fetchDepositRequests = async () => {
     setDepositRequests(data);
   } catch (error) {
     console.error("입금 대기 네트워크 오류:", error);
+  }
+};
+const fetchPackages = async () => {
+  try {
+    const response = await fetch("/.netlify/functions/getPackages");
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("패키지 조회 실패:", data);
+      return;
+    }
+
+    const formattedPackages = data.map((pkg: any) => ({
+      id: pkg.id,
+      name: pkg.name,
+      coinAmount: pkg.coin_amount,
+      priceKrw: pkg.price_krw,
+      description: pkg.description,
+      isActive: pkg.is_active,
+      sortOrder: pkg.sort_order,
+      isPopular: pkg.is_popular,
+    }));
+
+    setPackages(formattedPackages);
+  } catch (error) {
+    console.error("패키지 조회 네트워크 오류:", error);
   }
 };
 const fetchBankInfo = async () => {
