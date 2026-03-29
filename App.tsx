@@ -1677,7 +1677,9 @@ const handleTogglePackageActive = async (pkg: CoinPackage) => {
                   </div>
                   <div className="glass p-8 rounded-[2.5rem] border-white/5">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">가입 일자</p>
-                    <p className="text-sm font-black text-slate-200 mt-2">{adminSelectedUser.processedAt ? new Date(adminSelectedUser.processedAt).toLocaleDateString() : '관리자 강제 생성'}</p>
+                    <p className="text-sm font-black text-slate-200 mt-2">{adminSelectedUser?.created_at
+? new Date(Number(adminSelectedUser.created_at)).toLocaleString('ko-KR')
+  : '정보 없음'}</p>
                   </div>
                </div>
 
