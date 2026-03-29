@@ -174,8 +174,9 @@ export default function App() {
   const [adminSelectedUser, setAdminSelectedUser] = useState<User | null>(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [pendingMembers, setPendingMembers] = useState<any[]>([]); 
+  const [depositRequests, setDepositRequests] = useState<any[]>([]);
   const [allMembers, setAllMembers] = useState<any[]>([]);
-
+  
   // Auth States
   const [loginForm, setLoginForm] = useState({ id: '', password: '' });
   const [signupForm, setSignupForm] = useState({
@@ -297,8 +298,10 @@ useEffect(() => {
   if (view === ViewType.ADMIN && user?.role !== 'user') {
     fetchPendingMembers();
     fetchAllMembers(); 
+    fetchDepositRequests();
   }
 }, [view, user]);
+
 const fetchAllMembers = async () => {
   try {
     const response = await fetch("/.netlify/functions/getAllMembers");
@@ -312,6 +315,21 @@ const fetchAllMembers = async () => {
     setAllMembers(data);
   } catch (error) {
     console.error("전체 회원 불러오기 네트워크 오류:", error);
+  }
+};
+const fetchDepositRequests = async () => {
+  try {
+    const response = await fetch("/.netlify/functions/getPendingDeposits");
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("입금 대기 조회 실패:", data);
+      return;
+    }
+
+    setDepositRequests(data);
+  } catch (error) {
+    console.error("입금 대기 네트워크 오류:", error);
   }
 };
   // Admin Logging Helper
@@ -1158,17 +1176,17 @@ const fetchPendingMembers = async () => {
                       <table className="w-full text-left text-sm">
                         <thead className="bg-slate-800/50 text-[10px] font-black uppercase text-slate-500 tracking-widest"><tr><th className="px-10 py-6">신청 유저</th><th className="px-10 py-6">결제액 / GC</th><th className="px-10 py-6 text-right">상태 제어</th></tr></thead>
                         <tbody className="divide-y divide-white/5">
-                          {transactions.filter(t => t.status === 'WAITING_FOR_DEPOSIT').map(trx => (
-                            <tr key={trx.id} className="hover:bg-white/[0.02] transition-colors bg-blue-600/[0.01]">
-                              <td className="px-10 py-8"><span className="font-black text-slate-200">{trx.userName}</span><p className="text-[10px] text-slate-500 font-mono mt-1">{trx.id}</p></td>
+                          {depositRequests.map((trx: any) => (
+                            <tr key={trx.request_id} className="hover:bg-white/[0.02] transition-colors bg-blue-600/[0.01]">
+                              <td className="px-10 py-8"><span className="font-black text-slate-200">{trx.user_Name}</span><p className="text-[10px] text-slate-500 font-mono mt-1">{trx.request.id}</p></td>
                               <td className="px-10 py-8"><span className="font-black text-blue-400">{formatKrw(trx.price)}</span><p className="text-[10px] text-green-500 font-bold uppercase">+{trx.amount.toLocaleString()} GC</p></td>
                               <td className="px-10 py-8 text-right"><div className="flex gap-2 justify-end">
-                                <button onClick={() => handleApproveTransaction(trx.id)} className="p-4 bg-green-600/20 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white" title="입금 확인 및 코인 지급"><Check size={20}/></button>
-                                <button onClick={() => handleCancelManual(trx.id)} className="p-4 bg-slate-900 text-red-400 rounded-2xl hover:bg-red-600 hover:text-white" title="취소 처리"><XCircle size={20}/></button>
+                                <button onClick={() => handleApproveTransaction(trx.request_id)} className="p-4 bg-green-600/20 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white" title="입금 확인 및 코인 지급"><Check size={20}/></button>
+                                <button onClick={() => handleCancelManual(trx.request_id)} className="p-4 bg-slate-900 text-red-400 rounded-2xl hover:bg-red-600 hover:text-white" title="취소 처리"><XCircle size={20}/></button>
                               </div></td>
                             </tr>
                           ))}
-                          {transactions.filter(t => t.status === 'WAITING_FOR_DEPOSIT').length === 0 && (
+                          {depositRequests.length === 0 && (
                             <tr><td colSpan={3} className="px-10 py-16 text-center text-slate-500 font-black uppercase tracking-widest">처리 대기 중인 주문이 없습니다.</td></tr>
                           )}
                         </tbody>
@@ -1311,7 +1329,7 @@ const fetchPendingMembers = async () => {
                          <tr key={trx.id} className="hover:bg-white/[0.02] transition-colors">
                             <td className="px-10 py-8"><p className="text-sm font-black">{new Date(trx.timestamp).toLocaleString()}</p><p className="text-[10px] text-slate-500 font-mono mt-1">{trx.id}</p></td>
                             <td className="px-10 py-8"><StatusBadge status={trx.status} /></td>
-                            <td className="px-10 py-8 text-right"><span className="font-black text-xl">{formatKrw(trx.price)}</span><p className="text-[10px] font-black text-blue-500">+{trx.amount.toLocaleString()} GC</p></td>
+                            <td className="px-10 py-8 text-right"><span className="font-black text-xl">{formatKrw(trx.price_krw)}</span><p className="text-[10px] font-black text-blue-500">+{trx.coin_amount.toLocaleString()} GC</p></td>
                          </tr>
                       ))}
                       {transactions.filter(t => t.userId === user?.id).length === 0 && (
