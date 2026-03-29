@@ -342,14 +342,16 @@ const fetchAllMembers = async () => {
     const data = await response.json();
 
     if (!response.ok) {
-      setAuthError(data.error || "로그인 실패");
-      return;
-    }
+  setAuthError(data.error || "로그인 실패");
+  setLoginForm({ id: '', password: '' });
+  return;
+}
 
     const foundUser = data.user;
 
     setUser(foundUser);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(foundUser));
+    setLoginForm({ id: '', password: '' });
 
     if (foundUser.role !== 'user') {
       if (!foundUser.isPasswordChanged) {
