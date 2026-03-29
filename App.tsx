@@ -198,81 +198,89 @@ export default function App() {
 
   // Initialize Data from Storage
   useEffect(() => {
-    const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-    const storedPackages = localStorage.getItem(PACKAGES_STORAGE_KEY);
-    const storedTransactions = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
-    const storedBankInfo = localStorage.getItem(BANK_INFO_STORAGE_KEY);
-    const storedLogs = localStorage.getItem(ADMIN_LOGS_STORAGE_KEY);
+  const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+  const storedPackages = localStorage.getItem(PACKAGES_STORAGE_KEY);
+  const storedTransactions = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
+  const storedLogs = localStorage.getItem(ADMIN_LOGS_STORAGE_KEY);
 
-    if (storedUser) {
-  const parsedUser = JSON.parse(storedUser);
-  setUser(parsedUser);
+  if (storedUser) {
+    const parsedUser = JSON.parse(storedUser);
+    setUser(parsedUser);
 
-  if (parsedUser.role !== 'user') {
-    if (!parsedUser.isPasswordChanged) {
-      setView(ViewType.FORCE_PW_CHANGE);
+    if (parsedUser.role !== 'user') {
+      if (!parsedUser.isPasswordChanged) {
+        setView(ViewType.FORCE_PW_CHANGE);
+      } else {
+        setView(ViewType.ADMIN);
+      }
     } else {
-      setView(ViewType.ADMIN);
+      setView(ViewType.DASHBOARD);
     }
-  } else {
-    setView(ViewType.DASHBOARD);
   }
-}
-    if (storedPackages) setPackages(JSON.parse(storedPackages));
-    else {
-      setPackages(INITIAL_PACKAGES);
-      localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(INITIAL_PACKAGES));
-    }
-    if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
-    if (storedBankInfo) {
-      setBankInfo(JSON.parse(storedBankInfo));
-      setTempBankInfo(JSON.parse(storedBankInfo));
-    }
-    if (storedLogs) setAdminLogs(JSON.parse(storedLogs));
 
-    // Data Migration & Initial Setup
-    const users = getAllUsers();
-    
-    // Migrate existing users to have a status field if missing
-    let needsSync = false;
-    const migratedUsers = users.map(u => {
-      let migrated = { ...u };
-      let changed = false;
-      if (!u.status) {
-        migrated.status = u.isActive ? 'APPROVED' : 'SUSPENDED';
-        changed = true;
-      }
-      if (u.totalPaidCoins === undefined) {
-        migrated.totalPaidCoins = u.role === 'user' ? u.balance : 0;
-        migrated.totalUsedCoins = 0;
-        changed = true;
-      }
-      if (changed) needsSync = true;
-      return migrated as User;
-    });
+  if (storedPackages) {
+    setPackages(JSON.parse(storedPackages));
+  } else {
+    setPackages(INITIAL_PACKAGES);
+    localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(INITIAL_PACKAGES));
+  }
 
-    if (!migratedUsers.some(u => u.id === 'superadmin')) {
-      const superAdmin: User = {
-        id: 'superadmin',
-        name: '시스템 최고관리자',
-        email: 'super@globalcoin.com',
-        balance: 0,
-        totalPaidCoins: 0,
-        totalUsedCoins: 0,
-        role: 'super_admin',
-        status: 'APPROVED',
-        isActive: true,
-        isPasswordChanged: false,
-        password: 'Temp!Admin1234'
-      };
-      migratedUsers.push(superAdmin);
-      needsSync = true;
+  if (storedTransactions) {
+    setTransactions(JSON.parse(storedTransactions));
+  }
+
+  if (storedLogs) {
+    setAdminLogs(JSON.parse(storedLogs));
+  }
+
+  // ✅ 수납 계좌 정보는 이제 DB에서 불러옴
+  fetchBankInfo();
+
+  // Data Migration & Initial Setup
+  const users = getAllUsers();
+
+  let needsSync = false;
+  const migratedUsers = users.map(u => {
+    let migrated = { ...u };
+    let changed = false;
+
+    if (!u.status) {
+      migrated.status = u.isActive ? 'APPROVED' : 'SUSPENDED';
+      changed = true;
     }
 
-    if (needsSync) {
-      updateUsersRegistry(migratedUsers);
+    if (u.totalPaidCoins === undefined) {
+      migrated.totalPaidCoins = u.role === 'user' ? u.balance : 0;
+      migrated.totalUsedCoins = 0;
+      changed = true;
     }
-  }, []);
+
+    if (changed) needsSync = true;
+    return migrated as User;
+  });
+
+  if (!migratedUsers.some(u => u.id === 'superadmin')) {
+    const superAdmin: User = {
+      id: 'superadmin',
+      name: '시스템 최고관리자',
+      email: 'super@globalcoin.com',
+      balance: 0,
+      totalPaidCoins: 0,
+      totalUsedCoins: 0,
+      role: 'super_admin',
+      status: 'APPROVED',
+      isActive: true,
+      isPasswordChanged: false,
+      password: 'Temp!Admin1234'
+    };
+    migratedUsers.push(superAdmin);
+    needsSync = true;
+  }
+
+  if (needsSync) {
+    updateUsersRegistry(migratedUsers);
+  }
+}, []);
 
   // Run auto-expiry check for transactions older than 24h
   /*
@@ -339,6 +347,28 @@ const fetchDepositRequests = async () => {
     setDepositRequests(data);
   } catch (error) {
     console.error("입금 대기 네트워크 오류:", error);
+  }
+};
+const fetchBankInfo = async () => {
+  try {
+    const response = await fetch("/.netlify/functions/getBankInfo");
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("계좌 정보 조회 실패:", data);
+      return;
+    }
+
+    const formattedBankInfo = {
+      bankName: data.bank_name,
+      accountNumber: data.account_number,
+      accountHolder: data.account_holder,
+    };
+
+    setBankInfo(formattedBankInfo);
+    setTempBankInfo(formattedBankInfo);
+  } catch (error) {
+    console.error("계좌 정보 조회 네트워크 오류:", error);
   }
 };
 const fetchMyCoinRequests = async () => {
@@ -802,14 +832,42 @@ const fetchPendingMembers = async () => {
     setNewAdminData({ id: '', name: '', email: '', password: '', role: 'admin' });
   };
 
-  const handleSaveBankInfo = () => {
-    if (user?.role !== 'super_admin') return;
-    const oldInfo = { ...bankInfo };
-    setBankInfo(tempBankInfo);
-    localStorage.setItem(BANK_INFO_STORAGE_KEY, JSON.stringify(tempBankInfo));
-    addAdminLog('Config', 'Bank transfer details updated', oldInfo, tempBankInfo);
+  const handleSaveBankInfo = async () => {
+  if (user?.role !== 'super_admin') return;
+
+  try {
+    const response = await fetch("/.netlify/functions/updateBankInfo", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        bankName: tempBankInfo.bankName,
+        accountNumber: tempBankInfo.accountNumber,
+        accountHolder: tempBankInfo.accountHolder,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("계좌 정보 저장 실패:", data);
+      return;
+    }
+
+    const updatedBankInfo = {
+      bankName: data.bankInfo.bank_name,
+      accountNumber: data.bankInfo.account_number,
+      accountHolder: data.bankInfo.account_holder,
+    };
+
+    setBankInfo(updatedBankInfo);
+    setTempBankInfo(updatedBankInfo);
     setIsEditingBank(false);
-  };
+  } catch (error) {
+    console.error("계좌 정보 저장 네트워크 오류:", error);
+  }
+};
 
   const adminStats = useMemo(() => ({
     pendingTrxs: transactions.filter(t => t.status === 'WAITING_FOR_DEPOSIT').length,
