@@ -801,25 +801,51 @@ const fetchPendingMembers = async () => {
     setTempPackageData({});
   };
 
-  const handleCreatePackage = () => {
-    if (!newPackageForm.name || !newPackageForm.coinAmount || !newPackageForm.priceKrw) return;
+ const handleCreatePackage = async () => {
+  if (!newPackageForm.name || !newPackageForm.coinAmount || !newPackageForm.priceKrw) return;
+
+  try {
     const pkgId = `pkg_${Date.now()}`;
-    const newPkg: CoinPackage = {
-      id: pkgId,
-      name: newPackageForm.name!,
-      coinAmount: Number(newPackageForm.coinAmount),
-      priceKrw: Number(newPackageForm.priceKrw),
-      description: newPackageForm.description || '',
-      isActive: newPackageForm.isActive ?? true,
-      sortOrder: Number(newPackageForm.sortOrder || 0)
-    };
-    const updated = [...packages, newPkg];
-    setPackages(updated);
-    localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(updated));
-    addAdminLog('Config', `Created new package: ${newPkg.name}`, null, newPkg);
+
+    const response = await fetch("/.netlify/functions/createPackage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: pkgId,
+        name: newPackageForm.name,
+        coinAmount: Number(newPackageForm.coinAmount),
+        priceKrw: Number(newPackageForm.priceKrw),
+        description: newPackageForm.description || "",
+        isActive: newPackageForm.isActive ?? true,
+        sortOrder: Number(newPackageForm.sortOrder || 0),
+        isPopular: false,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("패키지 생성 실패:", data);
+      return;
+    }
+
+    await fetchPackages();
+
     setShowCreatePackage(false);
-    setNewPackageForm({ name: '', coinAmount: 0, priceKrw: 0, description: '', isActive: true, sortOrder: 0 });
-  };
+    setNewPackageForm({
+      name: '',
+      coinAmount: 0,
+      priceKrw: 0,
+      description: '',
+      isActive: true,
+      sortOrder: 0
+    });
+  } catch (error) {
+    console.error("패키지 생성 네트워크 오류:", error);
+  }
+};
 
   const handleUpdateRole = (id: string, newRole: UserRole) => {
     if (user?.role !== 'super_admin') return;
