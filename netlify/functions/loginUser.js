@@ -73,7 +73,9 @@ exports.handler = async (event) => {
     if (member.status === "PENDING") {
       return {
         statusCode: 403,
-        body: JSON.stringify({ error: "회원가입 승인 대기 중입니다. 관리자 승인 후 이용 가능합니다." }),
+        body: JSON.stringify({
+          error: "회원가입 승인 대기 중입니다. 관리자 승인 후 이용 가능합니다.",
+        }),
       };
     }
 
@@ -89,7 +91,9 @@ exports.handler = async (event) => {
     if (member.status === "SUSPENDED") {
       return {
         statusCode: 403,
-        body: JSON.stringify({ error: "활동이 정지된 계정입니다. 고객센터에 문의하세요." }),
+        body: JSON.stringify({
+          error: "활동이 정지된 계정입니다. 고객센터에 문의하세요.",
+        }),
       };
     }
 

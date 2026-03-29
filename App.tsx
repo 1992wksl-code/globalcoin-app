@@ -342,8 +342,7 @@ const fetchAllMembers = async () => {
     const data = await response.json();
 
     if (!response.ok) {
-      setAuthError(data.error || "로그인 중 오류가 발생했습니다.");
-      setIsLoading(false);
+      setAuthError(data.error || "로그인 실패");
       return;
     }
 
@@ -353,14 +352,17 @@ const fetchAllMembers = async () => {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(foundUser));
 
     if (foundUser.role !== 'user') {
-      addAdminLog('Login', `Administrator logged in via ${isAdminPortal ? 'Admin Portal' : 'Main Portal'}`);
-      if (!foundUser.isPasswordChanged) setView(ViewType.FORCE_PW_CHANGE);
-      else setView(ViewType.ADMIN);
+      if (!foundUser.isPasswordChanged) {
+        setView(ViewType.FORCE_PW_CHANGE);
+      } else {
+        setView(ViewType.ADMIN);
+      }
     } else {
       setView(ViewType.DASHBOARD);
     }
+
   } catch (error) {
-    setAuthError("네트워크 오류가 발생했습니다.");
+    setAuthError("네트워크 오류");
   } finally {
     setIsLoading(false);
   }
