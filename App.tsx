@@ -176,6 +176,8 @@ export default function App() {
   const [pendingMembers, setPendingMembers] = useState<any[]>([]); 
   const [depositRequests, setDepositRequests] = useState<any[]>([]);
   const [allMembers, setAllMembers] = useState<any[]>([]);
+  const [myCoinRequests, setMyCoinRequests] = useState<any[]>([]);
+  const [allCoinRequests, setAllCoinRequests] = useState<any[]>([]);
   
   // Auth States
   const [loginForm, setLoginForm] = useState({ id: '', password: '' });
@@ -301,9 +303,14 @@ useEffect(() => {
     fetchPendingMembers();
     fetchAllMembers(); 
     fetchDepositRequests();
+    fetchAllCoinRequests();
   }
 }, [view, user]);
-
+useEffect(() => {
+  if (view === ViewType.HISTORY && user?.role === 'user') {
+    fetchMyCoinRequests();
+  }
+}, [view, user]);
 const fetchAllMembers = async () => {
   try {
     const response = await fetch("/.netlify/functions/getAllMembers");
@@ -332,6 +339,39 @@ const fetchDepositRequests = async () => {
     setDepositRequests(data);
   } catch (error) {
     console.error("입금 대기 네트워크 오류:", error);
+  }
+};
+const fetchMyCoinRequests = async () => {
+  if (!user?.id) return;
+
+  try {
+    const response = await fetch(`/.netlify/functions/getMyCoinRequests?userId=${user.id}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("내 구매내역 조회 실패:", data);
+      return;
+    }
+
+    setMyCoinRequests(data);
+  } catch (error) {
+    console.error("내 구매내역 네트워크 오류:", error);
+  }
+};
+
+const fetchAllCoinRequests = async () => {
+  try {
+    const response = await fetch("/.netlify/functions/getAllCoinRequests");
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("전체 구매내역 조회 실패:", data);
+      return;
+    }
+
+    setAllCoinRequests(data);
+  } catch (error) {
+    console.error("전체 구매내역 네트워크 오류:", error);
   }
 };
   // Admin Logging Helper
@@ -1229,7 +1269,60 @@ const fetchPendingMembers = async () => {
                     </div>
                   </div>
                 </section>
+<section className="space-y-8">
+  <h3 className="text-2xl font-black flex items-center gap-3">
+    <History size={28} className="text-blue-400" />
+    전체 구매 내역
+  </h3>
 
+  <div className="glass rounded-[3rem] overflow-hidden border-white/5 shadow-2xl">
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-slate-800/50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
+          <tr>
+            <th className="px-10 py-6">주문번호</th>
+            <th className="px-10 py-6">회원</th>
+            <th className="px-10 py-6">금액 / 코인</th>
+            <th className="px-10 py-6">상태</th>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-white/5">
+          {allCoinRequests.map((trx: any) => (
+            <tr key={trx.request_id} className="hover:bg-white/[0.02] transition-colors">
+              <td className="px-10 py-8">
+                <span className="font-mono text-xs text-slate-300">{trx.request_id}</span>
+              </td>
+              <td className="px-10 py-8">
+                <div className="flex flex-col">
+                  <span className="font-black text-slate-200">{trx.user_name}</span>
+                  <span className="text-[10px] text-slate-500">{trx.user_id}</span>
+                </div>
+              </td>
+              <td className="px-10 py-8">
+                <span className="font-black text-blue-400">{formatKrw(trx.price_krw)}</span>
+                <p className="text-[10px] font-black text-green-500 uppercase">
+                  +{trx.coin_amount.toLocaleString()} GC
+                </p>
+              </td>
+              <td className="px-10 py-8">
+                <StatusBadge status={trx.status} />
+              </td>
+            </tr>
+          ))}
+
+          {allCoinRequests.length === 0 && (
+            <tr>
+              <td colSpan={4} className="px-10 py-16 text-center text-slate-500 font-black uppercase tracking-widest">
+                구매 내역이 없습니다.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
                 {/* Member Management Search & Table */}
                 <section className="space-y-8">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1360,17 +1453,30 @@ const fetchPendingMembers = async () => {
                 <table className="w-full text-left">
                    <thead className="bg-slate-800/50 text-slate-500 text-[10px] font-black tracking-widest uppercase"><tr className="px-10 py-6"><th className="px-10 py-6">신청 일시 / ID</th><th className="px-10 py-6">진행 상태</th><th className="px-10 py-6 text-right">금액</th></tr></thead>
                    <tbody className="divide-y divide-white/5">
-                      {transactions.filter(t => t.userId === user?.id).map(trx => (
-                         <tr key={trx.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="px-10 py-8"><p className="text-sm font-black">{new Date(trx.timestamp).toLocaleString()}</p><p className="text-[10px] text-slate-500 font-mono mt-1">{trx.id}</p></td>
-                            <td className="px-10 py-8"><StatusBadge status={trx.status} /></td>
-                            <td className="px-10 py-8 text-right"><span className="font-black text-xl">{formatKrw(trx.price_krw)}</span><p className="text-[10px] font-black text-blue-500">+{trx.coin_amount.toLocaleString()} GC</p></td>
-                         </tr>
-                      ))}
-                      {transactions.filter(t => t.userId === user?.id).length === 0 && (
-                         <tr><td colSpan={3} className="px-10 py-32 text-center text-slate-500 font-black uppercase tracking-widest">거래 기록이 존재하지 않습니다.</td></tr>
-                      )}
-                   </tbody>
+  {myCoinRequests.map((trx: any) => (
+    <tr key={trx.request_id} className="hover:bg-white/[0.02] transition-colors">
+      <td className="px-10 py-8">
+        <p className="text-sm font-black">{new Date(trx.created_at).toLocaleString()}</p>
+        <p className="text-[10px] text-slate-500 font-mono mt-1">{trx.request_id}</p>
+      </td>
+      <td className="px-10 py-8">
+        <StatusBadge status={trx.status} />
+      </td>
+      <td className="px-10 py-8 text-right">
+        <span className="font-black text-xl">{formatKrw(trx.price_krw)}</span>
+        <p className="text-[10px] font-black text-blue-500">+{trx.coin_amount.toLocaleString()} GC</p>
+      </td>
+    </tr>
+  ))}
+
+  {myCoinRequests.length === 0 && (
+    <tr>
+      <td colSpan={3} className="px-10 py-32 text-center text-slate-500 font-black uppercase tracking-widest">
+        거래 기록이 존재하지 않습니다.
+      </td>
+    </tr>
+  )}
+</tbody>
                 </table>
              </div>
            </div>
