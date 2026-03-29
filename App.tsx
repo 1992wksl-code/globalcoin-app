@@ -826,7 +826,31 @@ const fetchPendingMembers = async () => {
     console.error("패키지 수정 네트워크 오류:", error);
   }
 };
+const handleTogglePackageActive = async (pkg: CoinPackage) => {
+  try {
+    const response = await fetch("/.netlify/functions/togglePackageActive", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: pkg.id,
+        isActive: !pkg.isActive,
+      }),
+    });
 
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("패키지 노출 상태 변경 실패:", data);
+      return;
+    }
+
+    await fetchPackages();
+  } catch (error) {
+    console.error("패키지 노출 상태 변경 네트워크 오류:", error);
+  }
+};
  const handleCreatePackage = async () => {
   if (!newPackageForm.name || !newPackageForm.coinAmount || !newPackageForm.priceKrw) return;
 
@@ -1531,17 +1555,13 @@ const fetchPendingMembers = async () => {
                              </div>
                              <div className="flex items-center gap-2">
                                 {user?.role === 'super_admin' && <button onClick={() => { setEditingPackage(pkg); setTempPackageData(pkg); }} className="p-2 text-slate-500 hover:text-white transition-colors"><Edit size={16}/></button>}
-                                <button 
-                                  disabled={user?.role !== 'super_admin'}
-                                  onClick={() => {
-                                    const oldPkg = { ...pkg };
-                                    const updated = packages.map(p => p.id === pkg.id ? { ...p, isActive: !p.isActive } : p);
-                                    setPackages(updated);
-                                    localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(updated));
-                                    addAdminLog('Config', `Package ${pkg.name} visibility changed`, oldPkg.isActive, !pkg.isActive);
-                                  }} className={`text-[10px] font-black px-4 py-2 rounded-xl ${pkg.isActive ? 'bg-blue-600' : 'bg-slate-900 text-slate-500'}`}>
-                                   {pkg.isActive ? '노출' : '숨김'}
-                                </button>
+                                <button
+  disabled={user?.role !== 'super_admin'}
+  onClick={() => handleTogglePackageActive(pkg)}
+  className={`text-[10px] font-black px-4 py-2 rounded-xl ${pkg.isActive ? 'bg-blue-600' : 'bg-slate-900 text-slate-500'}`}
+>
+  {pkg.isActive ? '노출' : '숨김'}
+</button>
                              </div>
                           </div>
                        ))}
