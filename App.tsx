@@ -1201,13 +1201,22 @@ const fetchPendingMembers = async () => {
 
     <td className="px-10 py-8 text-right">
       <div className="flex gap-2 justify-end">
-        <button onClick={() => handleApproveTransaction(trx.request_id)}>
-          승인
-        </button>
-        <button onClick={() => handleCancelManual(trx.request_id)}>
-          취소
-        </button>
-      </div>
+  <button
+    onClick={() => handleApproveTransaction(trx.request_id)}
+    className="p-4 bg-green-600/20 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white"
+    title="입금 확인 및 코인 지급"
+  >
+    승인
+  </button>
+
+  <button
+    onClick={() => handleCancelManual(trx.request_id)}
+    className="p-4 bg-slate-900 text-red-400 rounded-2xl hover:bg-red-600 hover:text-white"
+    title="취소 처리"
+  >
+    취소
+  </button>
+</div>
     </td>
 
   </tr>
