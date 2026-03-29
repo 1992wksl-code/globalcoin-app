@@ -201,7 +201,20 @@ export default function App() {
     const storedBankInfo = localStorage.getItem(BANK_INFO_STORAGE_KEY);
     const storedLogs = localStorage.getItem(ADMIN_LOGS_STORAGE_KEY);
 
-    if (storedUser) setUser(JSON.parse(storedUser));
+    if (storedUser) {
+  const parsedUser = JSON.parse(storedUser);
+  setUser(parsedUser);
+
+  if (parsedUser.role !== 'user') {
+    if (!parsedUser.isPasswordChanged) {
+      setView(ViewType.FORCE_PW_CHANGE);
+    } else {
+      setView(ViewType.ADMIN);
+    }
+  } else {
+    setView(ViewType.DASHBOARD);
+  }
+}
     if (storedPackages) setPackages(JSON.parse(storedPackages));
     else {
       setPackages(INITIAL_PACKAGES);
