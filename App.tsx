@@ -1709,38 +1709,77 @@ const handleTogglePackageActive = async (pkg: CoinPackage) => {
                   </section>
 
                   <section className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-xl font-black flex items-center gap-3"><History size={20} className="text-slate-500"/> 개별 코인 구매 이력</h4>
-                      <button className="text-[10px] font-black uppercase text-slate-500 hover:text-white" onClick={() => exportToCsv(transactions.filter(t => t.userId === adminSelectedUser.id))}>이력 추출</button>
-                    </div>
-                    <div className="glass rounded-[3rem] overflow-hidden border-white/5">
-                       <div className="overflow-x-auto max-h-[400px]">
-                          <table className="w-full text-left text-xs">
-                             <thead className="bg-slate-800/50 text-[10px] font-black uppercase text-slate-500 tracking-widest sticky top-0 z-10">
-                                <tr><th className="px-6 py-4">일시</th><th className="px-6 py-4">상품/금액</th><th className="px-6 py-4">상태</th></tr>
-                             </thead>
-                             <tbody className="divide-y divide-white/5">
-                                {transactions.filter(t => t.userId === adminSelectedUser.id).map(t => (
-                                  <tr key={t.id} className="hover:bg-white/[0.02]">
-                                     <td className="px-6 py-5">
-                                       <p className="font-bold">{new Date(t.timestamp).toLocaleDateString()}</p>
-                                       <p className="text-[10px] text-slate-500 font-mono mt-0.5">{t.id.split('-')[2]}</p>
-                                     </td>
-                                     <td className="px-6 py-5">
-                                       <p className="font-black text-blue-400">+{t.amount.toLocaleString()} GC</p>
-                                       <p className="text-[10px] text-slate-500">{formatKrw(t.price)}</p>
-                                     </td>
-                                     <td className="px-6 py-5"><StatusBadge status={t.status}/></td>
-                                  </tr>
-                                ))}
-                                {transactions.filter(t => t.userId === adminSelectedUser.id).length === 0 && (
-                                  <tr><td colSpan={3} className="px-6 py-20 text-center text-slate-500 font-bold">기록된 이력이 없습니다.</td></tr>
-                                )}
-                             </tbody>
-                          </table>
-                       </div>
-                    </div>
-                  </section>
+  <div className="flex justify-between items-center">
+    <h4 className="text-xl font-black flex items-center gap-3">
+      <History size={20} className="text-slate-500" />
+      개별 코인 구매 이력
+    </h4>
+    <button
+      className="text-[10px] font-black uppercase text-slate-500 hover:text-white"
+      onClick={() =>
+        exportToCsv(
+          allCoinRequests
+            .filter((t: any) => t.user_id === adminSelectedUser.user_id)
+            .map((t: any) => ({
+              id: t.request_id,
+              timestamp: t.created_at,
+              userId: t.user_id,
+              userName: t.user_name,
+              packageName: t.package_name,
+              amount: t.coin_amount,
+              price: t.price_krw,
+              status: t.status,
+              adminNote: t.admin_note || '',
+            }))
+        )
+      }
+    >
+      이력 추출
+    </button>
+  </div>
+
+  <div className="glass rounded-[3rem] overflow-hidden border-white/5">
+    <div className="overflow-x-auto max-h-[400px]">
+      <table className="w-full text-left text-xs">
+        <thead className="bg-slate-800/50 text-[10px] font-black uppercase text-slate-500 tracking-widest sticky top-0 z-10">
+          <tr>
+            <th className="px-6 py-4">일시</th>
+            <th className="px-6 py-4">상품/금액</th>
+            <th className="px-6 py-4">상태</th>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-white/5">
+          {allCoinRequests
+            .filter((t: any) => t.user_id === adminSelectedUser.user_id)
+            .map((t: any) => (
+              <tr key={t.request_id} className="hover:bg-white/[0.02]">
+                <td className="px-6 py-5">
+                  <p className="font-bold">{new Date(t.created_at).toLocaleDateString()}</p>
+                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">{t.request_id}</p>
+                </td>
+                <td className="px-6 py-5">
+                  <p className="font-black text-blue-400">+{t.coin_amount.toLocaleString()} GC</p>
+                  <p className="text-[10px] text-slate-500">{formatKrw(t.price_krw)}</p>
+                </td>
+                <td className="px-6 py-5">
+                  <StatusBadge status={t.status} />
+                </td>
+              </tr>
+            ))}
+
+          {allCoinRequests.filter((t: any) => t.user_id === adminSelectedUser.user_id).length === 0 && (
+            <tr>
+              <td colSpan={3} className="px-6 py-20 text-center text-slate-500 font-bold">
+                기록된 이력이 없습니다.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
                </div>
             </div>
           </div>
