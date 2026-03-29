@@ -173,6 +173,7 @@ export default function App() {
   const [rejectionNote, setRejectionNote] = useState('');
   const [adminSelectedUser, setAdminSelectedUser] = useState<User | null>(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [pendingMembers, setPendingMembers] = useState<any[]>([]);
 
   // Auth States
   const [loginForm, setLoginForm] = useState({ id: '', password: '' });
@@ -278,7 +279,11 @@ export default function App() {
       }
     }
   }, [user, transactions.length]);
-
+useEffect(() => {
+  if (view === ViewType.ADMIN && user?.role !== 'user') {
+    fetchPendingMembers();
+  }
+}, [view, user]);
   // Admin Logging Helper
   const addAdminLog = (action: string, details: string, prev?: any, curr?: any) => {
     if (!user) return;
@@ -395,6 +400,21 @@ const handleSignupSubmit = async (e: React.FormEvent) => {
     setAuthError("네트워크 오류가 발생했습니다.");
   } finally {
     setIsLoading(false);
+  }
+};
+const fetchPendingMembers = async () => {
+  try {
+    const response = await fetch("/.netlify/functions/getPendingMembers");
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("승인대기 회원 불러오기 실패:", data);
+      return;
+    }
+
+    setPendingMembers(data);
+  } catch (error) {
+    console.error("승인대기 회원 불러오기 네트워크 오류:", error);
   }
 };
 
@@ -984,12 +1004,12 @@ const handleSignupSubmit = async (e: React.FormEvent) => {
                           <tr><th className="px-10 py-6">신청 유저</th><th className="px-10 py-6">연락처/이메일</th><th className="px-10 py-6 text-right">승인 제어</th></tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                          {getAllUsers().filter(u => u.status === 'PENDING').map(pendingUser => (
-                            <tr key={pendingUser.id} className="hover:bg-white/[0.02] transition-colors bg-blue-400/[0.01]">
+                          {pendingMembers.map((pendingUser) => (
+                            <tr key={pendingUser.user_id} className="hover:bg-white/[0.02] transition-colors bg-blue-400/[0.01]">
                               <td className="px-10 py-8">
                                 <div className="flex flex-col">
                                   <span className="font-black text-slate-200">{pendingUser.name}</span>
-                                  <span className="text-[10px] text-slate-500 font-mono mt-1">ID: {pendingUser.id}</span>
+                                  <span className="text-[10px] text-slate-500 font-mono mt-1">ID: {pendingUser.user_id}</span>
                                 </div>
                               </td>
                               <td className="px-10 py-8">
@@ -1010,7 +1030,7 @@ const handleSignupSubmit = async (e: React.FormEvent) => {
                               </td>
                             </tr>
                           ))}
-                          {getAllUsers().filter(u => u.status === 'PENDING').length === 0 && (
+                          {pendingMembers.length === 0 && (
                             <tr><td colSpan={3} className="px-10 py-24 text-center text-slate-500 font-black uppercase tracking-widest">대기 중인 회원가입 요청이 없습니다.</td></tr>
                           )}
                         </tbody>
