@@ -1190,14 +1190,26 @@ const fetchPendingMembers = async () => {
                         <tbody className="divide-y divide-white/5">
                           {depositRequests.map((trx: any) => (
                             <tr key={trx.request_id} className="hover:bg-white/[0.02] transition-colors bg-blue-600/[0.01]">
-                              <td className="px-10 py-8"><span className="font-black text-slate-200">{trx.user_Name}</span><p className="text-[10px] text-slate-500 font-mono mt-1">{trx.request.id}</p></td>
-                              <td className="px-10 py-8"><span className="font-black text-blue-400">{formatKrw(trx.price)}</span><p className="text-[10px] text-green-500 font-bold uppercase">+{trx.amount.toLocaleString()} GC</p></td>
-                              <td className="px-10 py-8 text-right"><div className="flex gap-2 justify-end">
-                                <button onClick={() => handleApproveTransaction(trx.request_id)} className="p-4 bg-green-600/20 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white" title="입금 확인 및 코인 지급"><Check size={20}/></button>
-                                <button onClick={() => handleCancelManual(trx.request_id)} className="p-4 bg-slate-900 text-red-400 rounded-2xl hover:bg-red-600 hover:text-white" title="취소 처리"><XCircle size={20}/></button>
-                              </div></td>
-                            </tr>
-                          ))}
+                              <td className="px-10 py-8">
+      <span className="font-black text-blue-400">{formatKrw(trx.price_krw)}</span>
+      <p className="text-[10px] text-green-500 font-bold uppercase">
+        +{trx.coin_amount.toLocaleString()} GC
+      </p>
+    </td>
+
+    <td className="px-10 py-8 text-right">
+      <div className="flex gap-2 justify-end">
+        <button onClick={() => handleApproveTransaction(trx.request_id)}>
+          승인
+        </button>
+        <button onClick={() => handleCancelManual(trx.request_id)}>
+          취소
+        </button>
+      </div>
+    </td>
+
+  </tr>
+))}
                           {depositRequests.length === 0 && (
                             <tr><td colSpan={3} className="px-10 py-16 text-center text-slate-500 font-black uppercase tracking-widest">처리 대기 중인 주문이 없습니다.</td></tr>
                           )}
