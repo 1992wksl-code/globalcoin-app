@@ -273,6 +273,7 @@ export default function App() {
   }, []);
 
   // Run auto-expiry check for transactions older than 24h
+  /*
   useEffect(() => {
     if (user && user.role !== 'user' && transactions.length > 0) {
       const now = Date.now();
@@ -294,6 +295,7 @@ export default function App() {
       }
     }
   }, [user, transactions.length]);
+  */
 useEffect(() => {
   if (view === ViewType.ADMIN && user?.role !== 'user') {
     fetchPendingMembers();
