@@ -302,61 +302,52 @@ useEffect(() => {
   };
 
   // Auth Functions
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setAuthError(null);
-    const { id, password } = loginForm;
-    
-    setTimeout(() => {
-      const users = getAllUsers();
-      const foundUser = users.find(u => u.id === id);
-      
-      if (foundUser) {
-        if (foundUser.password !== password) {
-          setAuthError('비밀번호가 일치하지 않습니다.');
-          setIsLoading(false);
-          return;
-        }
+  const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setAuthError(null);
 
-        if (foundUser.status === 'PENDING') {
-          setAuthError('회원가입 승인 대기 중입니다. 관리자 승인 후 이용 가능합니다.');
-          setIsLoading(false);
-          return;
-        }
-        if (foundUser.status === 'REJECTED') {
-          setAuthError(`회원가입 신청이 반려되었습니다. ${foundUser.rejectionReason ? `사유: ${foundUser.rejectionReason}` : ''}`);
-          setIsLoading(false);
-          return;
-        }
-        if (foundUser.status === 'SUSPENDED') {
-          setAuthError('활동이 정지된 계정입니다. 고객센터에 문의하세요.');
-          setIsLoading(false);
-          return;
-        }
+  const { id, password } = loginForm;
 
-        if (isAdminPortal && foundUser.role === 'user') {
-          setAuthError('관리자 권한이 없습니다.');
-          setIsLoading(false);
-          return;
-        }
+  try {
+    const response = await fetch("/.netlify/functions/loginUser", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id,
+        password,
+        isAdminPortal,
+      }),
+    });
 
-        setUser(foundUser);
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(foundUser));
+    const data = await response.json();
 
-        if (foundUser.role !== 'user') {
-          addAdminLog('Login', `Administrator logged in via ${isAdminPortal ? 'Admin Portal' : 'Main Portal'}`);
-          if (!foundUser.isPasswordChanged) setView(ViewType.FORCE_PW_CHANGE);
-          else setView(ViewType.ADMIN);
-        } else {
-          setView(ViewType.DASHBOARD);
-        }
-      } else {
-        setAuthError('아이디를 찾을 수 없습니다.');
-      }
+    if (!response.ok) {
+      setAuthError(data.error || "로그인 중 오류가 발생했습니다.");
       setIsLoading(false);
-    }, 500);
-  };
+      return;
+    }
+
+    const foundUser = data.user;
+
+    setUser(foundUser);
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(foundUser));
+
+    if (foundUser.role !== 'user') {
+      addAdminLog('Login', `Administrator logged in via ${isAdminPortal ? 'Admin Portal' : 'Main Portal'}`);
+      if (!foundUser.isPasswordChanged) setView(ViewType.FORCE_PW_CHANGE);
+      else setView(ViewType.ADMIN);
+    } else {
+      setView(ViewType.DASHBOARD);
+    }
+  } catch (error) {
+    setAuthError("네트워크 오류가 발생했습니다.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 const handleSignupSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setIsLoading(true);
