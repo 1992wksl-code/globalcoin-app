@@ -352,40 +352,51 @@ export default function App() {
       setIsLoading(false);
     }, 500);
   };
+const handleSignupSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setAuthError(null);
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setAuthError(null);
-    const { id, password, confirmPassword, name, email, phone, bankName, accountNumber } = signupForm;
-    if (password !== confirmPassword) {
-      setAuthError('비밀번호가 일치하지 않습니다.');
+  const { id, password, confirmPassword, name, email, phone, bankName, accountNumber } = signupForm;
+
+  if (password !== confirmPassword) {
+    setAuthError('비밀번호가 일치하지 않습니다.');
+    setIsLoading(false);
+    return;
+  }
+
+  try {
+    const response = await fetch("/.netlify/functions/signupUser", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id,
+        password,
+        name,
+        email,
+        phone,
+        bankName,
+        accountNumber,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setAuthError(data.error || "회원가입 중 오류가 발생했습니다.");
       setIsLoading(false);
       return;
     }
-    setTimeout(() => {
-      const users = getAllUsers();
-      if (users.some(u => u.id === id)) {
-        setAuthError('이미 존재하는 아이디입니다.');
-        setIsLoading(false);
-        return;
-      }
-      const newUser: User = {
-        id, password, name, email, phone, bankName, accountNumber,
-        balance: 1000, 
-        totalPaidCoins: 1000,
-        totalUsedCoins: 0,
-        role: 'user', 
-        status: 'PENDING',
-        isActive: true, 
-        isPasswordChanged: true
-      };
-      const updatedUsers = [...users, newUser];
-      updateUsersRegistry(updatedUsers);
-      setView(ViewType.SIGNUP_SUCCESS);
-      setIsLoading(false);
-    }, 800);
-  };
+
+    setView(ViewType.SIGNUP_SUCCESS);
+  } catch (error) {
+    setAuthError("네트워크 오류가 발생했습니다.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleForcePwChange = () => {
     if (!pwChangeData.new || pwChangeData.new !== pwChangeData.confirm) {
