@@ -1563,9 +1563,6 @@ const fetchPendingMembers = async () => {
         </div>
       )}
 
-      <button onClick={saveUser}>
-        DB 저장 테스트
-      </button>
     </div>
   );
 }
