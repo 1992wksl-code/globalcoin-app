@@ -564,49 +564,61 @@ const fetchPendingMembers = async () => {
   };
 
   // Operational Functions
-  const handleApproveTransaction = (trxId: string) => {
-    const trx = transactions.find(t => t.id === trxId);
-    if (!trx || trx.status !== 'WAITING_FOR_DEPOSIT') return;
-    const now = Date.now();
-    
-    // 1. Update User Balance & Stats
-    const users = getAllUsers();
-    const updatedUsers = users.map(u => u.id === trx.userId ? { 
-      ...u, 
-      balance: u.balance + trx.amount,
-      totalPaidCoins: u.totalPaidCoins + trx.amount 
-    } : u);
-    updateUsersRegistry(updatedUsers);
-    
-    // 2. Update Transaction Status (Automatic Delivery as per Requirement)
-    const updatedTrxs = transactions.map(t => t.id === trxId ? {
-      ...t, 
-      status: 'COIN_DELIVERED' as TransactionStatus,
-      processedBy: user?.id,
-      history: [
-        ...t.history, 
-        { status: 'PAID' as TransactionStatus, timestamp: now, actor: 'admin' as const, actorId: user?.id },
-        { status: 'COIN_DELIVERED' as TransactionStatus, timestamp: now + 1, actor: 'system' as const }
-      ]
-    } : t);
-    setTransactions(updatedTrxs);
-    localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(updatedTrxs));
-    addAdminLog('Transaction', `Verified deposit and delivered ${trx.amount} GC to ${trx.userName} (${trxId})`);
-  };
+  const handleApproveTransaction = async (requestId: string) => {
+  try {
+    const response = await fetch("/.netlify/functions/approveCoinRequest", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        requestId,
+        processedBy: user?.id,
+      }),
+    });
 
-  const handleCancelManual = (trxId: string, note?: string) => {
-    const now = Date.now();
-    const updatedTrxs = transactions.map(t => t.id === trxId ? {
-      ...t, 
-      status: 'REJECTED_MANUAL' as TransactionStatus,
-      adminNote: note || t.adminNote,
-      history: [...t.history, { status: 'REJECTED_MANUAL' as TransactionStatus, timestamp: now, actor: 'admin' as const, actorId: user?.id }]
-    } : t);
-    setTransactions(updatedTrxs);
-    localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(updatedTrxs));
-    addAdminLog('Transaction', `Denied deposit request ${trxId}`);
-  };
+    const data = await response.json();
 
+    if (!response.ok) {
+      console.error("입금 승인 실패:", data);
+      return;
+    }
+
+    // DB 다시 불러오기 (핵심)
+    await fetchDepositRequests();
+    await fetchAllMembers();
+
+  } catch (error) {
+    console.error("입금 승인 네트워크 오류:", error);
+  }
+};
+
+  const handleCancelManual = async (requestId: string, note?: string) => {
+  try {
+    const response = await fetch("/.netlify/functions/rejectCoinRequest", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        requestId,
+        adminNote: note || "",
+        processedBy: user?.id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("구매 요청 취소 실패:", data);
+      return;
+    }
+
+    await fetchDepositRequests();
+  } catch (error) {
+    console.error("구매 요청 취소 네트워크 오류:", error);
+  }
+};
   const handleRequestPurchase = async (pkg: CoinPackage) => {
   if (!user) return;
 
