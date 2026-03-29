@@ -589,27 +589,84 @@ const fetchPendingMembers = async () => {
     addAdminLog('Transaction', `Denied deposit request ${trxId}`);
   };
 
-  const handleRequestPurchase = (pkg: CoinPackage) => {
-    if (!user) return;
-    setIsLoading(true);
-    setTimeout(() => {
-      const now = Date.now();
-      const newTrx: Transaction = {
-        id: `ORD-${now}-${Math.random().toString(36).substring(7).toUpperCase()}`,
-        userId: user.id, userName: user.name, packageId: pkg.id, packageName: pkg.name, amount: pkg.coinAmount, price: pkg.priceKrw,
-        timestamp: now, expiresAt: now + (DEPOSIT_DEADLINE_HOURS * 60 * 60 * 1000),
-        status: 'WAITING_FOR_DEPOSIT', 
-        history: [{ status: 'WAITING_FOR_DEPOSIT', timestamp: now, actor: 'user', actorId: user.id }],
-        bankInfoSnapshot: { ...bankInfo }
-      };
-      const updatedTrxs = [newTrx, ...transactions];
-      setTransactions(updatedTrxs);
-      localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(updatedTrxs));
-      setShowCheckout(null);
-      setShowDepositInfo(newTrx);
+  const handleRequestPurchase = async (pkg: CoinPackage) => {
+  if (!user) return;
+
+  setIsLoading(true);
+
+  try {
+    const now = Date.now();
+
+    const requestId = `ORD-${now}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    const payload = {
+      requestId,
+      userId: user.id,
+      userName: user.name,
+      packageId: pkg.id,
+      packageName: pkg.name,
+      coinAmount: pkg.coinAmount,
+      priceKrw: pkg.priceKrw,
+      bankInfoSnapshot: {
+        bankName: bankInfo.bankName,
+        accountNumber: bankInfo.accountNumber,
+        accountHolder: bankInfo.accountHolder,
+      },
+      createdAt: now,
+      expiresAt: now + (DEPOSIT_DEADLINE_HOURS * 60 * 60 * 1000),
+    };
+
+    const response = await fetch("/.netlify/functions/createCoinRequest", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("구매 신청 저장 실패:", data);
       setIsLoading(false);
-    }, 800);
-  };
+      return;
+    }
+
+    const newTrx: Transaction = {
+      id: data.request.request_id,
+      userId: data.request.user_id,
+      userName: data.request.user_name,
+      packageId: data.request.package_id,
+      packageName: data.request.package_name,
+      amount: data.request.coin_amount,
+      price: data.request.price_krw,
+      timestamp: data.request.created_at,
+      expiresAt: data.request.expires_at,
+      status: data.request.status as TransactionStatus,
+      history: [
+        {
+          status: data.request.status as TransactionStatus,
+          timestamp: data.request.created_at,
+          actor: 'user',
+          actorId: user.id,
+        },
+      ],
+      bankInfoSnapshot: {
+        bankName: data.request.bank_name,
+        accountNumber: data.request.account_number,
+        accountHolder: data.request.account_holder,
+      },
+    };
+
+    setTransactions([newTrx, ...transactions]);
+    setShowCheckout(null);
+    setShowDepositInfo(newTrx);
+  } catch (error) {
+    console.error("구매 신청 네트워크 오류:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleSavePackage = () => {
     if (!editingPackage || !tempPackageData) return;
