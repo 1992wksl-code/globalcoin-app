@@ -790,16 +790,42 @@ const fetchPendingMembers = async () => {
   }
 };
 
-  const handleSavePackage = () => {
-    if (!editingPackage || !tempPackageData) return;
-    const oldPkg = packages.find(p => p.id === editingPackage.id);
-    const updatedPackages = packages.map(p => p.id === editingPackage.id ? { ...p, ...tempPackageData } : p);
-    setPackages(updatedPackages);
-    localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(updatedPackages));
-    addAdminLog('Config', `Package ${editingPackage.name} updated`, oldPkg, tempPackageData);
+  const handleSavePackage = async () => {
+  if (!editingPackage || !tempPackageData) return;
+
+  try {
+    const response = await fetch("/.netlify/functions/updatePackage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: editingPackage.id,
+        name: tempPackageData.name,
+        coinAmount: Number(tempPackageData.coinAmount),
+        priceKrw: Number(tempPackageData.priceKrw),
+        description: tempPackageData.description || "",
+        isActive: tempPackageData.isActive ?? true,
+        sortOrder: Number(tempPackageData.sortOrder || 0),
+        isPopular: tempPackageData.isPopular ?? false,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("패키지 수정 실패:", data);
+      return;
+    }
+
+    await fetchPackages();
+
     setEditingPackage(null);
     setTempPackageData({});
-  };
+  } catch (error) {
+    console.error("패키지 수정 네트워크 오류:", error);
+  }
+};
 
  const handleCreatePackage = async () => {
   if (!newPackageForm.name || !newPackageForm.coinAmount || !newPackageForm.priceKrw) return;
