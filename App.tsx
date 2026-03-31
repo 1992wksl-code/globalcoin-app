@@ -574,21 +574,44 @@ const fetchAdminAccounts = async () => {
     console.error("관리자 목록 네트워크 오류:", error);
   }
 };
-  const handleForcePwChange = () => {
-    if (!pwChangeData.new || pwChangeData.new !== pwChangeData.confirm) {
-      setAuthError('새 비밀번호가 일치하지 않습니다.');
+  const handleForcePwChange = async () => {
+  if (!pwChangeData.new || pwChangeData.new !== pwChangeData.confirm) {
+    setAuthError('새 비밀번호가 일치하지 않습니다.');
+    return;
+  }
+
+  if (!user) return;
+
+  try {
+    const response = await fetch("/.netlify/functions/updateAdminPassword", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        newPassword: pwChangeData.new,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setAuthError(data.error || "비밀번호 변경 실패");
       return;
     }
-    if (!user) return;
-    const users = getAllUsers();
-    const updatedUsers = users.map(u => u.id === user.id ? { ...u, password: pwChangeData.new, isPasswordChanged: true } : u);
-    updateUsersRegistry(updatedUsers);
-    const updatedUser = { ...user, isPasswordChanged: true, password: pwChangeData.new };
+
+    const updatedUser = data.user;
+
     setUser(updatedUser);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updatedUser));
-    addAdminLog('Security', 'Initial password change completed');
+    setPwChangeData({ old: '', new: '', confirm: '' });
+    setAuthError(null);
     setView(ViewType.ADMIN);
-  };
+  } catch (error) {
+    setAuthError("네트워크 오류가 발생했습니다.");
+  }
+};
 
   function handleLogout() {
     if (user && user.role !== 'user') addAdminLog('Session', 'Administrator logged out');
