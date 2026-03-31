@@ -1841,18 +1841,34 @@ const handleTogglePackageActive = async (pkg: CoinPackage) => {
                     
                     <h4 className="text-xl font-black flex items-center gap-3 mt-10"><Info size={20} className="text-slate-500"/> 관리자 내부 메모</h4>
                     <div className="glass p-4 rounded-[2rem] border-white/5 space-y-4">
-                       <textarea 
-                          className="w-full bg-slate-900 border border-white/5 rounded-2xl px-6 py-4 h-32 resize-none outline-none focus:border-blue-500 transition-all text-sm font-medium" 
-                          placeholder="회원에 대한 비공개 특이사항을 기록하세요."
-                          value={adminSelectedUser?.admin_note ?? adminSelectedUser?.adminNote ?? ''}
-                          onChange={e => setAdminSelectedUser({...adminSelectedUser, adminNote: e.target.value})}
-                       />
-                       <button 
-                        onClick={() => handleSaveAdminNote(adminSelectedUser.user_id, adminSelectedUser.admin_note ?? '')}
-                        className="w-full py-3 bg-blue-600 rounded-xl font-black text-sm active:scale-95 transition-all"
-                       >
-                         메모 업데이트
-                       </button>
+                       <textarea
+  className="w-full bg-slate-900 border border-white/5 rounded-2xl px-6 py-4 h-32 resize-none outline-none focus:border-blue-500 transition-all text-sm font-medium"
+  placeholder="회원에 대한 비공개 특이사항을 기록하세요."
+  value={adminSelectedUser?.admin_note ?? adminSelectedUser?.adminNote ?? ''}
+  onChange={(e) =>
+    setAdminSelectedUser((prev: any) =>
+      prev
+        ? {
+            ...prev,
+            admin_note: e.target.value,
+            adminNote: e.target.value,
+          }
+        : prev
+    )
+  }
+/>
+                       <button
+  onClick={() =>
+    adminSelectedUser &&
+    handleSaveAdminNote(
+      adminSelectedUser.user_id,
+      adminSelectedUser.admin_note ?? adminSelectedUser.adminNote ?? ''
+    )
+  }
+  className="w-full py-3 bg-blue-600 rounded-xl font-black text-sm active:scale-95 transition-all"
+>
+  메모 업데이트
+</button>
                     </div>
                   </section>
 
