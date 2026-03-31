@@ -656,15 +656,33 @@ const fetchAdminAccounts = async () => {
   }
 };
 
-  const handleToggleSuspension = (targetId: string) => {
-    const users = getAllUsers();
-    const target = users.find(u => u.id === targetId);
-    if (!target) return;
-    const newStatus = target.status === 'SUSPENDED' ? 'APPROVED' : 'SUSPENDED';
-    const updated = users.map(u => u.id === targetId ? { ...u, status: newStatus as UserStatus } : u);
-    updateUsersRegistry(updated);
-    addAdminLog('Member Management', `${newStatus === 'SUSPENDED' ? 'Suspended' : 'Unsuspended'} user: ${targetId}`);
-  };
+  const handleToggleSuspension = async (id: string) => {
+  if (user?.role !== 'super_admin') return;
+
+  try {
+    const response = await fetch("/.netlify/functions/toggleAdminSuspension", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setAuthError(data.error || "관리자 계정 상태 변경 실패");
+      return;
+    }
+
+    await fetchAdminAccounts();
+    setAuthError(null);
+  } catch (error) {
+    setAuthError("네트워크 오류가 발생했습니다.");
+  }
+};
 
   const handleSaveAdminNote = (userId: string, note: string) => {
     const users = getAllUsers();
@@ -918,14 +936,34 @@ const handleTogglePackageActive = async (pkg: CoinPackage) => {
   }
 };
 
-  const handleUpdateRole = (id: string, newRole: UserRole) => {
-    if (user?.role !== 'super_admin') return;
-    const users = getAllUsers();
-    const oldUser = users.find(u => u.id === id);
-    const updated = users.map(u => u.id === id ? { ...u, role: newRole } : u);
-    updateUsersRegistry(updated);
-    addAdminLog('Account Management', `Changed role of ${id} to ${newRole}`, oldUser?.role, newRole);
-  };
+  const handleUpdateRole = async (id: string, newRole: UserRole) => {
+  if (user?.role !== 'super_admin') return;
+
+  try {
+    const response = await fetch("/.netlify/functions/updateAdminRole", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: id,
+        newRole,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setAuthError(data.error || "관리자 권한 변경 실패");
+      return;
+    }
+
+    await fetchAdminAccounts();
+    setAuthError(null);
+  } catch (error) {
+    setAuthError("네트워크 오류가 발생했습니다.");
+  }
+};
 
   const handleCreateAdmin = async () => {
   if (user?.role !== 'super_admin') return;
