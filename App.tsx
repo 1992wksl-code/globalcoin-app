@@ -707,15 +707,37 @@ const fetchAdminAccounts = async () => {
   }
 };
 
-  const handleSaveAdminNote = (userId: string, note: string) => {
-    const users = getAllUsers();
-    const updated = users.map(u => u.id === userId ? { ...u, adminNote: note } : u);
-    updateUsersRegistry(updated);
-    if (adminSelectedUser?.id === userId) {
-      setAdminSelectedUser({ ...adminSelectedUser, adminNote: note });
+  const handleSaveAdminNote = async (userId: string, note: string) => {
+  try {
+    const response = await fetch("/.netlify/functions/updateMemberAdminNote", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId,
+        note,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("관리자 메모 저장 실패:", data);
+      return;
     }
-    addAdminLog('Member Management', `Updated internal note for user: ${userId}`);
-  };
+
+    await fetchAllMembers();
+
+    if (adminSelectedUser?.user_id === userId) {
+      setAdminSelectedUser((prev: any) =>
+        prev ? { ...prev, admin_note: note, adminNote: note } : prev
+      );
+    }
+  } catch (error) {
+    console.error("관리자 메모 저장 네트워크 오류:", error);
+  }
+};
 
   // Operational Functions
   const handleApproveTransaction = async (requestId: string) => {
@@ -1822,11 +1844,11 @@ const handleTogglePackageActive = async (pkg: CoinPackage) => {
                        <textarea 
                           className="w-full bg-slate-900 border border-white/5 rounded-2xl px-6 py-4 h-32 resize-none outline-none focus:border-blue-500 transition-all text-sm font-medium" 
                           placeholder="회원에 대한 비공개 특이사항을 기록하세요."
-                          value={adminSelectedUser.adminNote || ''}
+                          value={adminSelectedUser?.admin_note ?? adminSelectedUser?.adminNote ?? ''}
                           onChange={e => setAdminSelectedUser({...adminSelectedUser, adminNote: e.target.value})}
                        />
                        <button 
-                        onClick={() => handleSaveAdminNote(adminSelectedUser.id, adminSelectedUser.adminNote || '')}
+                        onClick={() => handleSaveAdminNote(adminSelectedUser.user_id, adminSelectedUser.admin_note ?? '')}
                         className="w-full py-3 bg-blue-600 rounded-xl font-black text-sm active:scale-95 transition-all"
                        >
                          메모 업데이트
