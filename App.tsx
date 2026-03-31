@@ -1752,7 +1752,7 @@ const handleTogglePackageActive = async (pkg: CoinPackage) => {
   {myCoinRequests.map((trx: any) => (
     <tr key={trx.request_id} className="hover:bg-white/[0.02] transition-colors">
       <td className="px-10 py-8">
-        <p className="text-sm font-black">{new Date(trx.created_at).toLocaleString()}</p>
+        <p className="text-sm font-black">{new Date(Number(trx.created_at)).toLocaleString('ko-KR')}</p>
         <p className="text-[10px] text-slate-500 font-mono mt-1">{trx.request_id}</p>
       </td>
       <td className="px-10 py-8">
