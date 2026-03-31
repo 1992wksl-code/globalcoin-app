@@ -187,10 +187,20 @@ export default function App() {
   });
   const [isAdminPortal, setIsAdminPortal] = useState(false);
 
-  
+  // Registry Helper
+  const getAllUsers = (): User[] => {
+    const usersStr = localStorage.getItem(USERS_STORAGE_KEY);
+    return usersStr ? JSON.parse(usersStr) : [];
+  };
+
+  const updateUsersRegistry = (updatedUsers: User[]) => {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updatedUsers));
+  };
+
   // Initialize Data from Storage
   useEffect(() => {
   const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+  const storedTransactions = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
   const storedLogs = localStorage.getItem(ADMIN_LOGS_STORAGE_KEY);
 
   if (storedUser) {
@@ -210,6 +220,10 @@ export default function App() {
 
   fetchPackages();
 
+  if (storedTransactions) {
+    setTransactions(JSON.parse(storedTransactions));
+  }
+
   if (storedLogs) {
     setAdminLogs(JSON.parse(storedLogs));
   }
@@ -217,7 +231,50 @@ export default function App() {
   // ✅ 수납 계좌 정보는 이제 DB에서 불러옴
   fetchBankInfo();
 
- 
+  // Data Migration & Initial Setup
+  const users = getAllUsers();
+
+  let needsSync = false;
+  const migratedUsers = users.map(u => {
+    let migrated = { ...u };
+    let changed = false;
+
+    if (!u.status) {
+      migrated.status = u.isActive ? 'APPROVED' : 'SUSPENDED';
+      changed = true;
+    }
+
+    if (u.totalPaidCoins === undefined) {
+      migrated.totalPaidCoins = u.role === 'user' ? u.balance : 0;
+      migrated.totalUsedCoins = 0;
+      changed = true;
+    }
+
+    if (changed) needsSync = true;
+    return migrated as User;
+  });
+
+  if (!migratedUsers.some(u => u.id === 'superadmin')) {
+    const superAdmin: User = {
+      id: 'superadmin',
+      name: '시스템 최고관리자',
+      email: 'super@globalcoin.com',
+      balance: 0,
+      totalPaidCoins: 0,
+      totalUsedCoins: 0,
+      role: 'super_admin',
+      status: 'APPROVED',
+      isActive: true,
+      isPasswordChanged: false,
+      password: 'Temp!Admin1234'
+    };
+    migratedUsers.push(superAdmin);
+    needsSync = true;
+  }
+
+  if (needsSync) {
+    updateUsersRegistry(migratedUsers);
+  }
 }, []);
 
   // Run auto-expiry check for transactions older than 24h
